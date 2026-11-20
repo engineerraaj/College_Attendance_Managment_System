@@ -11,7 +11,7 @@ import requests from './routes/requests.js';
 import resources from './routes/resources.js';
 import {notFound,errorHandler} from './middleware/errors.js';
 const app=express();
-app.use(helmet());app.use(cors({origin:process.env.CLIENT_URL||'http://localhost:5173'}));
+app.use(helmet());app.use(cors({origin:['https://college-attendance-frontend-yp42.onrender.com','http://localhost:5173']}));
 app.use(express.json({limit:'1mb'}));app.use(morgan('dev'));
 app.use('/api/auth',rateLimit({windowMs:15*60*1000,max:100}),auth);
 app.use('/api/attendance',attendance);app.use('/api/attendance-requests',requests);app.use('/api',resources);
