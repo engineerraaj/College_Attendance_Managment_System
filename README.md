@@ -47,18 +47,7 @@ npm install
 npm run dev
 ```
 
-## Demo login accounts
 
-All demo accounts use password `ChangeMe123!`:
-
-| Role | Email |
-|---|---|
-| Admin | admin@college.test |
-| HOD | hod@college.test |
-| Faculty | faculty@college.test |
-| Student | student@college.test |
-
-Change demo passwords before any real use.
 
 ## Environment variables
 
