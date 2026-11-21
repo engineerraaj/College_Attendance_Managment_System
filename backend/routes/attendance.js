@@ -43,10 +43,10 @@ r.post(
       }
 
       if (req.user.role === 'faculty') {
-        const assigned = await Subject.exists({
-          _id: subject,
-          faculty: req.user._id
-        });
+       const assigned = await Subject.exists({
+  _id: subject,
+  faculty: { $in: [req.user._id] }
+});
 
         if (!assigned) {
           return res.status(403).json({

@@ -13,7 +13,7 @@ export async function protect(req,res,next){
 export const allow=(...roles)=>(req,res,next)=>roles.includes(req.user.role)?next():res.status(403).json({message:'Forbidden'});
 export function departmentScope(req,res,next){
  if(req.user.role==='hod'){
-  const ids=req.user.departments.map(x=>String(x));
+  const ids=(req.user.departments || []).map(x=>String(x));
   if(req.query.department && !ids.includes(req.query.department)) return res.status(403).json({message:'Department access denied'});
   req.hodDepartments=ids;
  }

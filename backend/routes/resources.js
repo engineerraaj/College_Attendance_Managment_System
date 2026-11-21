@@ -360,7 +360,7 @@ r.get(
 // AUDIT LOGS
 r.get(
   '/audit-logs',
-  allow('admin', 'hod'),
+  allow('admin'),
   async (req, res, next) => {
     try {
       const logs = await AuditLog.find({})

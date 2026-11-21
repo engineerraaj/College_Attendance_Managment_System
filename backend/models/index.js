@@ -7,7 +7,7 @@ const userSchema = new Schema({
   password:{type:String,required:true,select:false}, role:{type:String,enum:['admin','faculty','student','hod'],required:true},
   active:{type:Boolean,default:true}, departments:[ref('Department',false)], permissions:[String], lastLogin:Date
 }, opts);
-userSchema.index({email:1},{unique:true});
+
 export const User=model('User',userSchema);
 export const Department=model('Department',new Schema({name:{type:String,required:true},code:{type:String,unique:true,required:true},hod:ref('User',false),active:{type:Boolean,default:true}},opts));
 export const Course=model('Course',new Schema({name:{type:String,required:true},code:{type:String,required:true,unique:true},department:ref('Department'),durationYears:Number},opts));
