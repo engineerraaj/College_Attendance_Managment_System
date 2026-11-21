@@ -388,6 +388,7 @@ function Reports() {
   const [code, setCode] = useState('');
   const [email, setEmail] = useState('');
 const [password, setPassword] = useState('');
+const [departmentCode, setDepartmentCode] = useState('');
   const [err, setErr] = useState('');
 
   const load = () => {
@@ -433,7 +434,8 @@ const [password, setPassword] = useState('');
      await api.post(endpoint, {
   name,
   code,
-  ...(title === 'Students' ? { email, password } : {})
+  ...(['Students', 'Faculty'].includes(title) ? { email, password } : {}),
+  ...(title === 'Faculty' ? { departmentCode } : {})
 });
               setName('');
               setCode('');
@@ -458,11 +460,11 @@ const [password, setPassword] = useState('');
             onChange={e => setCode(e.target.value)}
             required
           />
-{title === 'Students' && (
+{(title === 'Students' || title === 'Faculty') && (
   <>
     <input
       type="email"
-      placeholder="Student Email"
+      placeholder="Email"
       value={email}
       onChange={e => setEmail(e.target.value)}
       required
@@ -470,11 +472,19 @@ const [password, setPassword] = useState('');
 
     <input
       type="password"
-      placeholder="Student Password"
+      placeholder="Password"
       value={password}
       onChange={e => setPassword(e.target.value)}
       required
     />
+    {title === 'Faculty' && (
+  <input
+    placeholder="Department Code (e.g. CSE)"
+    value={departmentCode}
+    onChange={e => setDepartmentCode(e.target.value)}
+    required
+  />
+)}
   </>
 )}
           <button className="primary">

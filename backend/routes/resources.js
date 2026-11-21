@@ -176,6 +176,36 @@ if (
           await User.findByIdAndDelete(account._id);
           throw e;
         }
+
+      } else if (name === 'faculty') {
+        const department = await Department.findOne({
+          code: req.body.departmentCode
+        });
+
+        if (!department) {
+          return res.status(400).json({
+            message: 'Department code not found'
+          });
+        }
+
+        const account = await User.create({
+          name: req.body.name,
+          email: req.body.email,
+          password: await bcrypt.hash(req.body.password, 10),
+          role: 'faculty'
+        });
+
+        try {
+          doc = await Faculty.create({
+            user: account._id,
+            employeeId: req.body.code,
+            department: department._id
+          });
+        } catch (e) {
+          await User.findByIdAndDelete(account._id);
+          throw e;
+        }
+
       } else {
         const payload =
           name === 'notices'
