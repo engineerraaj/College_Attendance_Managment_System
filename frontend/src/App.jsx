@@ -507,11 +507,11 @@ const [password, setPassword] = useState('');
               {rows.map(x => (
                 <tr key={x._id}>
                   <td>
-                    {title === 'Timetable'
-  ? `${x.subject?.name || 'Subject'} - ${x.day || ''}`
-  : x.name || x.title || x.rollNumber ||
-    x.employeeId || x.email || x._id}
-                  </td>
+  {title === 'Timetable'
+    ? `${x.subject?.name || 'Subject'} - ${x.day || ''}`
+    : x.user?.name || x.name || x.title || x.rollNumber ||
+      x.employeeId || x.email || x.user?.email || x._id}
+</td>
                   <td>
                     {title === 'Timetable'
   ? `${x.startTime || ''} - ${x.endTime || ''} | Section ${x.section?.name || ''}`
