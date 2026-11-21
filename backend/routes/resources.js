@@ -12,7 +12,8 @@ import {
   Timetable,
   Notice,
   Notification,
-  AuditLog
+  AuditLog,
+  Attendance
 } from '../models/index.js';
 
 import { protect, allow, departmentScope } from '../middleware/auth.js';
@@ -38,77 +39,62 @@ const resources = {
   notifications: Notification
 };
 
-const adminOnly = [
-  'users',
-  'students',
-  'faculty',
-  'departments',
-  'courses',
-  'semesters',
-  'subjects',
-  'sections',
-  'enrollments',
-  'timetable'
-];
-
+// GET RECORDS
 for (const [name, Model] of Object.entries(resources)) {
   const sub = Router();
 
-  // GET RECORDS
   sub.get('/', async (req, res, next) => {
     try {
-      let f = {};
+      let filter = {};
 
       if (
         req.user.role === 'hod' &&
         ['departments', 'courses', 'subjects', 'sections', 'faculty'].includes(name)
       ) {
-        f.department = { $in: req.hodDepartments };
+        filter.department = { $in: req.hodDepartments || [] };
       }
 
-      if (req.user.role === 'student' && name === 'timetable') {
-  const student = await Student.findOne({ user: req.user._id });
+      if (
+        req.user.role === 'student' &&
+        name === 'timetable'
+      ) {
+        const student = await Student.findOne({
+          user: req.user._id
+        });
 
-  if (!student) {
-    return res.json([]);
-  }
+        if (!student) return res.json([]);
 
-  const enrollments = await Enrollment.find({
-    student: student._id
-  }).select('section');
+        const enrollments = await Enrollment.find({
+          student: student._id,
+          active: true
+        }).select('section');
 
-  f.section = {
-    $in: enrollments.map(e => e.section)
-  };
-}
+        filter.section = {
+          $in: enrollments.map(e => e.section)
+        };
+      }
 
-if (
-  req.user.role === 'student' &&
-  name !== 'notices' &&
-  name !== 'notifications' &&
-  name !== 'timetable'
-) {
-  return res.status(403).json({
-    message: 'Use student-specific endpoints'
-  });
-
+      if (
+        req.user.role === 'student' &&
+        !['notices', 'notifications', 'timetable'].includes(name)
+      ) {
         return res.status(403).json({
           message: 'Use student-specific endpoints'
         });
       }
 
       if (name === 'notifications') {
-        f.user = req.user._id;
+        filter.user = req.user._id;
       }
 
-      let query = Model.find(f);
+      let query = Model.find(filter);
 
-      if (name === 'enrollments') {
-        query = query
-          .populate('student', 'rollNumber')
-          .populate('section', 'name')
-          .populate('course', 'name')
-          .populate('semester', 'name');
+      if (name === 'users') {
+        query = query.select('-password');
+      }
+
+      if (name === 'students') {
+        query = query.populate('user', 'name email');
       }
 
       if (name === 'faculty') {
@@ -117,8 +103,12 @@ if (
           .populate('department', 'name code');
       }
 
-      if (name === 'students') {
-        query = query.populate('user', 'name email');
+      if (name === 'enrollments') {
+        query = query
+          .populate('student', 'rollNumber user')
+          .populate('section', 'name')
+          .populate('course', 'name')
+          .populate('semester', 'name');
       }
 
       if (name === 'subjects') {
@@ -144,7 +134,6 @@ if (
       }
 
       const docs = await query
-        .select(name === 'users' ? '-password' : undefined)
         .limit(Math.min(Number(req.query.limit) || 200, 500))
         .sort({ createdAt: -1 });
 
@@ -160,9 +149,22 @@ if (
       let doc;
 
       if (name === 'students') {
+        const rollNumber = req.body.rollNumber || req.body.code;
+
+        if (
+          !req.body.name ||
+          !req.body.email ||
+          !req.body.password ||
+          !rollNumber
+        ) {
+          return res.status(400).json({
+            message: 'Name, email, password and roll number are required'
+          });
+        }
+
         const account = await User.create({
-          name: req.body.name,
-          email: req.body.email,
+          name: req.body.name.trim(),
+          email: req.body.email.trim(),
           password: await bcrypt.hash(req.body.password, 10),
           role: 'student'
         });
@@ -170,16 +172,33 @@ if (
         try {
           doc = await Student.create({
             user: account._id,
-            rollNumber: req.body.code
+            rollNumber: String(rollNumber).trim()
           });
         } catch (e) {
           await User.findByIdAndDelete(account._id);
           throw e;
         }
 
-      } else if (name === 'faculty') {
+        await doc.populate('user', 'name email');
+      }
+
+      else if (name === 'faculty') {
+        const employeeId = req.body.employeeId || req.body.code;
+
+        if (
+          !req.body.name ||
+          !req.body.email ||
+          !req.body.password ||
+          !employeeId ||
+          !req.body.departmentCode
+        ) {
+          return res.status(400).json({
+            message: 'Name, email, password, employee ID and department code are required'
+          });
+        }
+
         const department = await Department.findOne({
-          code: req.body.departmentCode
+          code: req.body.departmentCode.trim()
         });
 
         if (!department) {
@@ -189,8 +208,8 @@ if (
         }
 
         const account = await User.create({
-          name: req.body.name,
-          email: req.body.email,
+          name: req.body.name.trim(),
+          email: req.body.email.trim(),
           password: await bcrypt.hash(req.body.password, 10),
           role: 'faculty'
         });
@@ -198,7 +217,7 @@ if (
         try {
           doc = await Faculty.create({
             user: account._id,
-            employeeId: req.body.code,
+            employeeId: String(employeeId).trim(),
             department: department._id
           });
         } catch (e) {
@@ -206,7 +225,13 @@ if (
           throw e;
         }
 
-      } else {
+        await doc.populate([
+          { path: 'user', select: 'name email' },
+          { path: 'department', select: 'name code' }
+        ]);
+      }
+
+      else {
         const payload =
           name === 'notices'
             ? {
@@ -283,70 +308,71 @@ if (
 }
 
 // REPORTS SUMMARY
-r.get('/reports/summary', allow('admin', 'hod', 'faculty'), async (req, res, next) => {
-  try {
-    const {
-      Attendance,
-      Student: StudentModel,
-      Faculty: FacultyModel
-    } = await import('../models/index.js');
+r.get(
+  '/reports/summary',
+  allow('admin', 'hod', 'faculty'),
+  async (req, res, next) => {
+    try {
+      const filter =
+        req.user.role === 'hod'
+          ? { department: { $in: req.hodDepartments || [] } }
+          : {};
 
-    const f =
-      req.user.role === 'hod'
-        ? { department: { $in: req.hodDepartments } }
-        : {};
+      const [students, faculty, attendance] = await Promise.all([
+        Student.countDocuments(),
+        Faculty.countDocuments(),
+        Attendance.find(filter)
+      ]);
 
-    const [students, faculty, attendance] = await Promise.all([
-      StudentModel.countDocuments(),
-      FacultyModel.countDocuments(),
-      Attendance.find(f)
-    ]);
+      const counts = {
+        present: 0,
+        absent: 0,
+        late: 0,
+        leave: 0
+      };
 
-    const counts = {
-      present: 0,
-      absent: 0,
-      late: 0,
-      leave: 0
-    };
+      attendance.forEach(a => {
+        if (counts[a.status] !== undefined) {
+          counts[a.status]++;
+        }
+      });
 
-    attendance.forEach(a => {
-      if (counts[a.status] !== undefined) {
-        counts[a.status]++;
-      }
-    });
+      const total =
+        counts.present + counts.absent + counts.late;
 
-    const d = counts.present + counts.absent + counts.late;
-
-    res.json({
-      students,
-      faculty,
-      totalAttendance: attendance.length,
-      counts,
-      percentage: d
-        ? Number(
-            (((counts.present + counts.late) / d) * 100).toFixed(1)
-          )
-        : 0
-    });
-  } catch (e) {
-    next(e);
+      res.json({
+        students,
+        faculty,
+        totalAttendance: attendance.length,
+        counts,
+        percentage: total
+          ? Number(
+              (((counts.present + counts.late) / total) * 100).toFixed(1)
+            )
+          : 0
+      });
+    } catch (e) {
+      next(e);
+    }
   }
-});
+);
 
 // AUDIT LOGS
-r.get('/audit-logs', allow('admin', 'hod'), async (req, res, next) => {
-  try {
-    const f = req.user.role === 'hod' ? {} : {};
+r.get(
+  '/audit-logs',
+  allow('admin', 'hod'),
+  async (req, res, next) => {
+    try {
+      const logs = await AuditLog.find({})
+        .populate('actor', 'name email')
+        .sort({ createdAt: -1 })
+        .limit(300);
 
-    const logs = await AuditLog.find(f)
-      .populate('actor', 'name email')
-      .sort({ createdAt: -1 })
-      .limit(300);
-
-    res.json(logs);
-  } catch (e) {
-    next(e);
+      res.json(logs);
+    } catch (e) {
+      next(e);
+    }
   }
-});
+);
 
 export default r;
