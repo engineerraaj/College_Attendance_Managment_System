@@ -278,31 +278,39 @@ for (const [name, Model] of Object.entries(resources)) {
     }
   });
 
-  // DEACTIVATE RECORD
-  sub.delete('/:id', allow('admin'), async (req, res, next) => {
-    try {
-      const doc = await Model.findByIdAndUpdate(
-        req.params.id,
-        { active: false },
-        { new: true }
-      );
-
-      if (!doc) {
-        return res.status(404).json({
-          message: 'Record not found'
-        });
-      }
-
-      await audit(req, 'SOFT_DELETE', name, doc._id);
-
-      res.json({
-        message: 'Record deactivated',
-        doc
+ // DELETE STUDENT / FACULTY
+sub.delete('/:id', allow('admin'), async (req, res, next) => {
+  try {
+    if (!['students', 'faculty'].includes(name)) {
+      return res.status(400).json({
+        message: 'Delete only allowed for students and faculty'
       });
-    } catch (e) {
-      next(e);
     }
-  });
+
+    const doc = await Model.findById(req.params.id);
+
+    if (!doc) {
+      return res.status(404).json({
+        message: 'Record not found'
+      });
+    }
+
+    await User.findByIdAndUpdate(doc.user, {
+      active: false
+    });
+
+    doc.active = false;
+    await doc.save();
+
+    await audit(req, 'DELETE', name, doc._id);
+
+    res.json({
+      message: 'Account deleted successfully'
+    });
+  } catch (e) {
+    next(e);
+  }
+});
 
   r.use('/' + name, sub);
 }
