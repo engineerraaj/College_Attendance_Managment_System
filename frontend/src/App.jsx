@@ -742,6 +742,7 @@ function DataPage({ title, endpoint, canAdd = true }) {
                 <th>Code / ID</th>
                 <th>Created</th>
                 <th>Status</th>
+                <th>Action</th>
               </tr>
             </thead>
 
@@ -778,6 +779,27 @@ function DataPage({ title, endpoint, canAdd = true }) {
         <span className="pill">
           {x.active === false ? 'Inactive' : 'Active'}
         </span>
+      </td>
+      <td>
+        {(title === 'Students' || title === 'Faculty') && (
+          <button
+            type="button"
+            className="secondary"
+            disabled={x.active === false}
+            onClick={async () => {
+              if (!window.confirm(`Deactivate this ${title.slice(0, -1)}?`)) return;
+
+              try {
+                await api.delete(`${endpoint}/${x._id}`);
+                await load();
+              } catch (e) {
+                setErr(getError(e, 'Could not deactivate record'));
+              }
+            }}
+          >
+            {x.active === false ? 'Deactivated' : 'Deactivate'}
+          </button>
+        )}
       </td>
     </tr>
   ))}
