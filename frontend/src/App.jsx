@@ -812,13 +812,16 @@ function AttendancePage({ user, mode = 'faculty' }) {
         setLoading(true);
         setError('');
 
-        const [enrollmentResponse, subjectResponse] =
-          await Promise.all([
-            api.get('/enrollments'),
-            api.get('/subjects')
-          ]);
+        const enrollmentResponse = await api.get('/enrollments');
+const subjectResponse = await api.get('/subjects');
+
+
 
         setEnrollments(getRows(enrollmentResponse.data));
+        
+        
+        
+        
         setAllSubjects(getRows(subjectResponse.data));
       } catch (err) {
         setError(getError(err, 'Could not load attendance data.'));
@@ -837,7 +840,7 @@ function AttendancePage({ user, mode = 'faculty' }) {
 
     return (
       user?.role !== 'faculty' ||
-      assignedFaculty.includes(getId(user._id))
+      assignedFaculty.includes(getId(user.id || user._id))
     );
   });
 
