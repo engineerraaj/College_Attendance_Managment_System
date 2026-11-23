@@ -176,9 +176,16 @@ r.get('/', async (req, res, next) => {
     }
 
     const rows = await Attendance.find(filter)
-      .populate('student', 'rollNumber user')
-      .populate('subject', 'name code')
-      .populate('faculty', 'name')
+  .populate({
+    path: 'student',
+    select: 'rollNumber user',
+    populate: {
+      path: 'user',
+      select: 'name email'
+    }
+  })
+  .populate('subject', 'name code')
+  .populate('faculty', 'name')
       .sort({ date: -1 })
       .limit(
         Math.min(Number(req.query.limit) || 500, 1000)
