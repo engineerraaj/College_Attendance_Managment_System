@@ -748,13 +748,15 @@ function DataPage({ title, endpoint, canAdd = true }) {
            <tbody>
   {rows.map((x, i) => (
     <tr key={x._id || i}>
-      <td>
-        {title === 'Timetable'
-          ? `${x.subject?.name || 'Subject'} - ${x.day || ''}`
-          : title === 'Students' || title === 'Faculty'
-            ? x.user?.name || '—'
-            : x.name || x.title || x.user?.name || x.email || x._id}
-      </td>
+     <td>
+  {title === 'Timetable'
+    ? `${x.subject?.name || 'Subject'} - ${x.day || ''}`
+    : title === 'Attendance'
+      ? x.student?.user?.name || x.student?.rollNumber || '—'
+      : title === 'Students' || title === 'Faculty'
+        ? x.user?.name || '—'
+        : x.name || x.title || x.user?.name || x.email || x._id}
+</td>
 
       <td>
         {title === 'Timetable'
