@@ -46,6 +46,9 @@ for (const [name, Model] of Object.entries(resources)) {
   sub.get('/', async (req, res, next) => {
     try {
       let filter = {};
+      if (['students', 'faculty'].includes(name)) {
+  filter.active = { $ne: false };
+}
 
       if (
         req.user.role === 'hod' &&
